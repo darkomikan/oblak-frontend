@@ -1,5 +1,6 @@
 {
   "expo": {
+    "scheme": "oblak",
     "name": "oblak-frontend",
     "slug": "oblak-frontend",
     "version": "1.0.0",
@@ -24,6 +25,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-router",
+      "expo-media-library"
+    ]
   }
 }
