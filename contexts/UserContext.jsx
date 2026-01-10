@@ -1,6 +1,8 @@
 import { createContext, useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import * as MediaLibrary from 'expo-media-library';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const UserContext = createContext();
 
@@ -10,6 +12,11 @@ export function UserProvider({ children })
 
     const router = useRouter();
     const pathname = usePathname();
+
+    const [permissionResponse, requestPermission] = MediaLibrary.usePermissions();
+    const [localAlbums, setLocalAlbums] = useState([]);
+    const [localFilesCount, setLocalFilesCount] = useState(0);
+    const [filesToSend, setFilesToSend] = useState([]);
 
     const [user, setUser] = useState(null);
     const [waiting, setWaiting] = useState(true);
@@ -60,7 +67,7 @@ export function UserProvider({ children })
         }
     }
 
-    async function register(username, password, camera, viber, messenger, whatsapp)
+    async function register(username, password)
     {
         try
         {
@@ -76,11 +83,7 @@ export function UserProvider({ children })
                         },
                         body: JSON.stringify({
                             Username: username,
-                            Password: password,
-                            Camera: camera ? 1 : 0,
-                            Viber: viber ? 1 : 0,
-                            Messenger: messenger ? 1 : 0,
-                            Whatsapp: whatsapp ? 1 : 0
+                            Password: password
                         })
                     }).then(async res => {
                         if (res.status < 400)
@@ -103,7 +106,7 @@ export function UserProvider({ children })
         }
     }
 
-    async function updateUser(lastSync = user.LastSync, camera = user.Camera, viber = user.Viber, messenger = user.Messenger, whatsapp = user.Whatsapp)
+    async function updateUser(lastSync = user.LastSync, folders = user.Folders)
     {
         try
         {
@@ -120,10 +123,7 @@ export function UserProvider({ children })
                     Username: user.Username,
                     Password: "",
                     LastSync: lastSync,
-                    Camera: camera ? 1 : 0,
-                    Viber: viber ? 1 : 0,
-                    Messenger: messenger ? 1 : 0,
-                    Whatsapp: whatsapp ? 1 : 0
+                    Folders: folders
                 })
             }).then(async res => {
                 if (res.ok)
@@ -133,10 +133,7 @@ export function UserProvider({ children })
                         Username: user.Username,
                         Password: user.Password,
                         LastSync: lastSync,
-                        Camera: camera ? 1 : 0,
-                        Viber: viber ? 1 : 0,
-                        Messenger: messenger ? 1 : 0,
-                        Whatsapp: whatsapp ? 1 : 0
+                        Folders: folders
                     };
                     setUser(data);
                     await SecureStore.setItemAsync("userData", JSON.stringify(data));
@@ -198,6 +195,92 @@ export function UserProvider({ children })
         router.replace("/");
     }
 
+    async function checkLocalAlbums()
+    {
+        console.log("checkAlbums");
+        if (permissionResponse.status !== "granted")
+        {
+            if ((await requestPermission()).status !== "granted")
+                return;
+        }
+        const fetchedAlbums = await MediaLibrary.getAlbumsAsync({
+            includeSmartAlbums: true
+        });
+        const albumsArray = [];
+        fetchedAlbums.forEach(async album => {
+            if (!albumsArray.includes(album.title))
+                albumsArray.push(album.title);
+        });
+        albumsArray.sort();
+        setLocalAlbums(albumsArray);
+    }
+
+    async function checkLocalFiles()
+    {
+        if (user !== null && filesToSend !== null)
+        {
+            setLocalFilesCount(0);
+            setFilesToSend(null);
+            console.log("checkFiles");
+            if (permissionResponse.status !== "granted")
+            {
+                if ((await requestPermission()).status !== "granted")
+                    return;
+            }
+            const fetchedAlbums = await MediaLibrary.getAlbumsAsync({
+                includeSmartAlbums: true
+            });
+
+            let ignored = await AsyncStorage.getItem("ignoreFiles");
+            let ignoreFiles = [];
+            if (ignored !== null)
+                ignoreFiles = JSON.parse(ignored);
+
+            let localFilesList = [];
+            for (const album of fetchedAlbums)
+            {
+                if (user?.Folders.includes(album.title))
+                {
+                    let assets = null;
+                    do
+                    {
+                        assets = await MediaLibrary.getAssetsAsync({ album: album, mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.audio,
+                            MediaLibrary.MediaType.video], after: assets?.endCursor });
+                        assets.assets.forEach(med => {
+                            let shortUri = med.uri.substring(25);
+                            if (!ignoreFiles.includes(shortUri))
+                            {
+                                setLocalFilesCount(prev => prev + 1);
+                                localFilesList.push(shortUri);
+                            }
+                        });
+                    } while (assets.hasNextPage);
+                }
+            }
+
+            fetch("http://192.168.1.28:5152/api/content/checkcontent", {
+                method: "POST",
+                headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                    Authorization: "Bearer " + user.Password
+                },
+                body: JSON.stringify({
+                    Username: user.Username,
+                    LocalContent: localFilesList
+                })
+            }).then(async res => {
+                if (res.ok)
+                {
+                    let files = await res.json();
+                    setFilesToSend(files);
+                }
+            }, () => {
+                setFilesToSend([]);
+            });
+        }
+    }
+
     const getUserData = useCallback(async () => { 
         const data = await SecureStore.getItemAsync("userData");
         if (data && data.includes("Username"))
@@ -206,7 +289,10 @@ export function UserProvider({ children })
     }, []);
 
     const checkStatus = useCallback(() => {
-        setWaiting(true);
+        const waitingTimeout = setTimeout(() => {
+            setWaiting(true);
+        }, 500);
+        
         fetch("http://192.168.1.28:5152/api/user/status", {
             method: "GET",
             headers: {
@@ -216,6 +302,7 @@ export function UserProvider({ children })
         }).then(res => {
             if (res.ok)
             {
+                clearTimeout(waitingTimeout);
                 setOnline(true);
                 if (user)
                 {
@@ -240,9 +327,7 @@ export function UserProvider({ children })
                 }
             }
             else
-            {
                 setOnline(false);
-            }
         }, () => {
             setOnline(false);
         }).finally(() => {
@@ -263,23 +348,25 @@ export function UserProvider({ children })
 
     useEffect(() => {
         const autoCheck = setInterval(() => {
-            if (online && !waiting)
-            {
-                console.log("checke")
+            if (!waiting)
                 checkStatus();
-            }
-        }, 3000);
+        }, 5000);
 
         return () => { clearInterval(autoCheck); };
-    }, [online, waiting, checkStatus]);
+    }, [waiting, checkStatus]);
 
     useEffect(() => {
-        if (!online && pathname !== "/")
+        if (!online && pathname !== "/" && pathname !== "/preview")
             router.replace("/");
+        else if (online && pathname === "/settings")
+            checkLocalAlbums();
+        else if (online && pathname === "/")
+            checkLocalFiles();
     }, [online, pathname]);
 
     return (
-        <UserContext.Provider value={{ user, waiting, online, usage, login, register, logout, updateUser, changePassword, checkStatus }}>
+        <UserContext.Provider value={{ user, waiting, online, usage, localAlbums, localFilesCount, filesToSend,
+            login, register, logout, updateUser, changePassword }}>
             {children}
         </UserContext.Provider>
     );

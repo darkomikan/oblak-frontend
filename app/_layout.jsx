@@ -10,6 +10,7 @@ const RootLayout = () => {
                 <Stack.Screen name="register" options={{ title: "Registruj novi nalog" }}/>
                 <Stack.Screen name="login" options={{ title: "Prijavi se na svoj nalog" }}/>
                 <Stack.Screen name="settings" options={{ title: "Podešavanje naloga" }}/>
+                <Stack.Screen name="preview" options={{ title: "Pregled novih datoteka" }}/>
             </Stack>
         </UserProvider>
     );

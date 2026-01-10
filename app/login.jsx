@@ -27,8 +27,8 @@ const Login = () => {
             <Link href="/register" style={{ marginBottom: 10, fontSize: 22, fontWeight: "500" }}>
                 <Text style={{ color: "#0022ffff", textDecorationLine: "underline" }}>Nemaš nalog? Registruj novi</Text>
             </Link>
-            <TextInput placeholder="Korisničko ime" style={styles.input} value={username} onChangeText={setUsername} />
-            <TextInput placeholder="Lozinka" secureTextEntry style={styles.input} value={password} onChangeText={setPassword} />
+            <TextInput placeholder="Korisničko ime" placeholderTextColor="#666666" style={styles.input} value={username} onChangeText={setUsername} />
+            <TextInput placeholder="Lozinka" placeholderTextColor="#666666" secureTextEntry style={styles.input} value={password} onChangeText={setPassword} />
             <Pressable style={({pressed}) => [styles.btn, (pressed || waiting) && styles.pressed]} onPress={handleSubmit} disabled={waiting}>
                 <Text style={{ color: "#f2f2f2", fontSize: 22 }}>Prijavi se</Text>
             </Pressable>
@@ -56,6 +56,7 @@ const styles = StyleSheet.create({
         opacity: 0.6
     },
     input: {
+        color: "#000000",
         backgroundColor: "#d0d0d0ff",
         padding: 15,
         borderRadius: 6,

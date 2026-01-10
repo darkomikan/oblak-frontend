@@ -1,50 +1,35 @@
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
-import oblakLogo from "../assets/oblak.png"
-import oblakLogo2 from "../assets/oblak2.png"
+import { ActivityIndicator, Dimensions, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import oblakLogo from "../assets/oblak.png";
+import oblakLogo2 from "../assets/oblak2.png";
 import { Link } from "expo-router";
 import { useUser } from "../hooks/useUser";
-import * as MediaLibrary from 'expo-media-library';
+import { Image } from "expo-image";
 
 const Home = () => {
-    // const [albums, setAlbums] = useState(null);
-    // const [permissionResponse, requestPermission] = MediaLibrary.usePermissions();
-
-    const { user, waiting, online, usage, checkStatus } = useUser();
-
-    const checkAlbums = async () => {
-        // if (permissionResponse.status !== "granted")
-        // {
-        //     await requestPermission();
-        //     if (permissionResponse.status !== "granted")
-        //         return;
-        // }
-        // const fetchedAlbums = await MediaLibrary.getAlbumsAsync({
-        //     includeSmartAlbums: true,
-        // });
-        // fetchedAlbums.forEach((val, index) => {
-        //     console.log(val.title + val.id + val.assetCount);
-        // });
-        // setAlbums(fetchedAlbums);
-    };
+    const { user, waiting, online, usage, localFilesCount, filesToSend } = useUser();
 
     return (
         <View style={[styles.container, { backgroundColor: online ? "#46bbf2ff" : "#005379ff" }]}>
             {online && user !== null && <Text style={[styles.title, { marginBottom: 0 }]}>Ukupno: {usage} MB</Text>}
-            <Image source={online ? oblakLogo : oblakLogo2} style={{ width: "60%", height: "25%", resizeMode: "center" }} />
-            {
-                waiting ? <ActivityIndicator style={{ marginBottom: 20 }} size="large" color="white" /> : 
-                (online ? <View style={{ marginBottom: 56 }}/> :
-                <Pressable style={({pressed}) => [styles.btn, pressed && styles.pressed]} onPress={checkStatus}>
-                    <Text style={{ color: "#f2f2f2", fontSize: 22 }}>Poveži se</Text>
-                </Pressable>)
-            }
+            <Image source={online ? oblakLogo : oblakLogo2} style={{ width: "60%", height: "25%" }} contentFit="contain" />
+            {waiting ? <ActivityIndicator style={{ marginBottom: 20 }} size="large" color="white" /> : <View style={{ marginBottom: 56 }}/>}
 
-            {online && user !== null && user.Camera === 1 && <Text style={styles.title}>Kamera</Text>}
-            {online && user !== null && user.Viber === 1 && <Text style={styles.title}>Viber</Text>}
-            {online && user !== null && user.Messenger === 1 && <Text style={styles.title}>Messenger</Text>}
-            {online && user !== null && user.Whatsapp === 1 && <Text style={styles.title}>Whatsapp</Text>}
+            {online && user !== null && 
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Text style={styles.title}>Broj lokalnih datoteka: {localFilesCount} </Text>
+                    {filesToSend === null && <ActivityIndicator style={{ marginBottom: 10 }} size="large" color="white" />}
+                </View>}
+            {online && user !== null && (filesToSend !== null ?
+                (filesToSend.length === 0 ? <Text style={styles.title}>Na oblaku su sačuvane sve</Text> : 
+                <Link href="/preview" style={{ marginBottom: 10, fontSize: 22, fontWeight: "500" }}>
+                    <Text style={{ color: "#0022ffff", textDecorationLine: "underline" }}>Na oblaku nije {filesToSend.length} datoteka</Text>
+                </Link>) :
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Text style={styles.title}>Stanje na oblaku: </Text>
+                    <ActivityIndicator style={{ marginBottom: 10 }} size="large" color="white" />
+                </View>)}
             {online && user !== null &&
-            <Pressable disabled={waiting} style={({pressed}) => [styles.btn, (pressed || waiting) && styles.pressed]} onPress={checkStatus}>
+            <Pressable disabled={waiting} style={({pressed}) => [styles.btn, (pressed || waiting) && styles.pressed]} onPress={null}>
                 <Text style={{ color: "#f2f2f2", fontSize: 22 }}>Sinhronizuj</Text>
             </Pressable>}
             {online && user !== null && <Link style={[styles.btn, waiting && styles.pressed]} href="/settings" disabled={waiting}>
@@ -85,7 +70,7 @@ const styles = StyleSheet.create({
         backgroundColor: "#0022ffff",
         padding: 15,
         borderRadius: 6,
-        marginBottom: 10
+        marginVertical: 10
     },
     pressed: {
         opacity: 0.6

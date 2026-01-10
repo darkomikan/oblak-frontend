@@ -1,22 +1,20 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useUser } from "../hooks/useUser";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Settings = () => {
-    const { user, waiting, logout, updateUser, changePassword } = useUser();
+    const { user, waiting, localAlbums, logout, updateUser, changePassword } = useUser();
 
     const [password, setPassword] = useState("");
-    const [camera, setCamera] = useState(user?.Camera === 1 ? true : false);
-    const [viber, setViber] = useState(user?.Viber === 1 ? true : false);
-    const [messenger, setMessenger] = useState(user?.Messenger === 1 ? true : false);
-    const [whatsapp, setWhatsapp] = useState(user?.Whatsapp === 1 ? true : false);
+    const [folders, setFolders] = useState(user?.Folders);
     const [error, setError] = useState(null);
 
     const handleUpdate = async () => {
         try
         {
             setError(null);
-            await updateUser(undefined, camera, viber, messenger, whatsapp);
+            await updateUser(undefined, folders);
         }
         catch (error)
         {
@@ -36,6 +34,10 @@ const Settings = () => {
         }
     };
 
+    const handleIgnoreReset = async () => {
+        await AsyncStorage.removeItem("ignoreFiles");
+    };
+
     return (
         <View style={styles.container}>
             <View style={{ flexDirection: "row", alignItems: "center", width: "95%", justifyContent: "space-between" }}>
@@ -47,31 +49,34 @@ const Settings = () => {
                     <Text style={{ color: "#f2f2f2", fontSize: 22 }}>Odjava</Text>
                 </Pressable>
             </View>
-            
-            <Text style={{ fontSize: 22, marginBottom: 10 }}>Čuvati slike sa:</Text>
-            <View style={styles.switchCard}>
-                <Text style={{ paddingHorizontal: 10, fontSize: 22 }}>Kamera</Text>
-                <Switch value={camera} onValueChange={setCamera} style={{ marginRight: 10 }} />
-            </View>
-            <View style={styles.switchCard}>
-                <Text style={{ paddingHorizontal: 10, fontSize: 22 }}>Viber</Text>
-                <Switch value={viber} onValueChange={setViber} style={{ marginRight: 10 }} />
-            </View>
-            <View style={styles.switchCard}>
-                <Text style={{ paddingHorizontal: 10, fontSize: 22 }}>Messenger</Text>
-                <Switch value={messenger} onValueChange={setMessenger} style={{ marginRight: 10 }} />
-            </View>
-            <View style={styles.switchCard}>
-                <Text style={{ paddingHorizontal: 10, fontSize: 22 }}>Whatsapp</Text>
-                <Switch value={whatsapp} onValueChange={setWhatsapp} style={{ marginRight: 10 }} />
-            </View>
 
             <Text style={{ fontSize: 22, marginBottom: 10 }}>Promjena lozinke:</Text>
-            <TextInput placeholder="Nova lozinka" secureTextEntry style={styles.input} value={password} onChangeText={setPassword} />
+            <TextInput placeholder="Nova lozinka" placeholderTextColor="#666666" secureTextEntry style={styles.input} value={password} onChangeText={setPassword} />
             <Pressable style={({pressed}) => [styles.btn, (pressed || waiting) && styles.pressed]} onPress={handleChangePassword} disabled={waiting}>
                 <Text style={{ color: "#f2f2f2", fontSize: 22 }}>Promijeni lozinku</Text>
             </Pressable>
             {error && <Text style={styles.error}>{error}</Text>}
+
+            <Text style={{ fontSize: 22, marginBottom: 10 }}>Lista albuma za čuvanje:</Text>
+            <FlatList style={{ width: "80%", backgroundColor: "#d0d0d0ff", borderRadius: 6, marginBottom: 10 }}
+                data={localAlbums} keyExtractor={item => item} renderItem={({item}) => (
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 10,
+                    paddingVertical: 5, backgroundColor: localAlbums.indexOf(item) % 2 === 1 ? "#d0d0d0ff" : "#afafafff"
+                 }}>
+                    <Text style={{ fontSize: 20 }}>{item}</Text>
+                    <Switch value={folders.includes(item)} style={{ transform: [{ scaleX: 1.25 }, { scaleY: 1.25 }] }}
+                        trackColor={{ true: "#0000aa", false: "#aa0000"}} thumbColor="#ffffdd" onValueChange={val => {
+                        if (!val)
+                            setFolders(prev => prev.filter(folder => folder !== item));
+                        else
+                            setFolders(prev => [...prev, item]);
+                    }}/>
+                </View>
+            )}/>
+
+            <Pressable style={({pressed}) => [styles.btn, { backgroundColor: "#cd6d00" }, pressed && styles.pressed]} onPress={handleIgnoreReset}>
+                <Text style={{ color: "#f2f2f2", fontSize: 22 }}>Osvježi ignorisane datoteke</Text>
+            </Pressable>
         </View>
     );
 }
@@ -84,6 +89,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "flex-start",
         paddingTop: 10,
+        paddingBottom: 50,
         backgroundColor: "#46bbf2ff"
     },
     btn: {
@@ -96,6 +102,7 @@ const styles = StyleSheet.create({
         opacity: 0.6
     },
     input: {
+        color: "#000000",
         backgroundColor: "#d0d0d0ff",
         padding: 15,
         borderRadius: 6,
@@ -118,6 +125,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderRadius: 6,
         marginHorizontal: 10,
+        marginBottom: 5,
         fontSize: 22
     }
 });
