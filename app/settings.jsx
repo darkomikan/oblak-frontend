@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useUser } from "../hooks/useUser";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -38,6 +38,22 @@ const Settings = () => {
         await AsyncStorage.removeItem("ignoreFiles");
     };
 
+    const renderItem = useCallback(({item}) => (
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 10,
+            paddingVertical: 5, backgroundColor: localAlbums.indexOf(item) % 2 === 1 ? "#d0d0d0ff" : "#afafafff"}}>
+            <Text style={{ fontSize: 20, maxWidth: "80%" }}>{item}</Text>
+            <Switch value={folders.includes(item)} style={{ transform: [{ scaleX: 1.25 }, { scaleY: 1.25 }] }}
+                trackColor={{ true: "#0000aa", false: "#aa0000"}} thumbColor="#ffffdd" onValueChange={val => {
+                if (!val)
+                    setFolders(prev => prev.filter(folder => folder !== item));
+                else
+                    setFolders(prev => [...prev, item]);
+            }}/>
+        </View>
+    ), [localAlbums, folders]);
+
+    const keyExtractor = useCallback((item) => item, []);
+
     return (
         <View style={styles.container}>
             <View style={{ flexDirection: "row", alignItems: "center", width: "95%", justifyContent: "space-between" }}>
@@ -59,20 +75,7 @@ const Settings = () => {
 
             <Text style={{ fontSize: 22, marginBottom: 10 }}>Lista albuma za čuvanje:</Text>
             <FlatList style={{ width: "80%", backgroundColor: "#d0d0d0ff", borderRadius: 6, marginBottom: 10 }}
-                data={localAlbums} keyExtractor={item => item} renderItem={({item}) => (
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 10,
-                    paddingVertical: 5, backgroundColor: localAlbums.indexOf(item) % 2 === 1 ? "#d0d0d0ff" : "#afafafff"
-                 }}>
-                    <Text style={{ fontSize: 20 }}>{item}</Text>
-                    <Switch value={folders.includes(item)} style={{ transform: [{ scaleX: 1.25 }, { scaleY: 1.25 }] }}
-                        trackColor={{ true: "#0000aa", false: "#aa0000"}} thumbColor="#ffffdd" onValueChange={val => {
-                        if (!val)
-                            setFolders(prev => prev.filter(folder => folder !== item));
-                        else
-                            setFolders(prev => [...prev, item]);
-                    }}/>
-                </View>
-            )}/>
+                data={localAlbums} keyExtractor={keyExtractor} renderItem={renderItem}/>
 
             <Pressable style={({pressed}) => [styles.btn, { backgroundColor: "#cd6d00" }, pressed && styles.pressed]} onPress={handleIgnoreReset}>
                 <Text style={{ color: "#f2f2f2", fontSize: 22 }}>Osvježi ignorisane datoteke</Text>
@@ -96,7 +99,8 @@ const styles = StyleSheet.create({
         backgroundColor: "#0022ffff",
         padding: 15,
         borderRadius: 6,
-        marginBottom: 10
+        marginBottom: 10,
+        boxShadow: "0px 4px rgba(0,0,0,0.2)"
     },
     pressed: {
         opacity: 0.6
@@ -109,13 +113,6 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         width: "80%",
         fontSize: 22
-    },
-    switchCard: {
-        flexDirection: "row",
-        alignItems: "center",
-        borderRadius: 6,
-        marginBottom: 10,
-        backgroundColor: "#d0d0d0ff"
     },
     error: {
         color: "#ff0000",

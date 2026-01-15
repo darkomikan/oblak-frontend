@@ -22,7 +22,9 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
+      "requestLegacyExternalStorage": true,
       "permissions": [
+        "android.permission.MANAGE_EXTERNAL_STORAGE",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
@@ -38,7 +40,8 @@
     "plugins": [
       "expo-secure-store",
       "expo-router",
-      "expo-media-library"
+      "expo-media-library",
+      "expo-build-properties"
     ],
     "extra": {
       "router": {},

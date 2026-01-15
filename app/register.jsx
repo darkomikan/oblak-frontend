@@ -1,6 +1,6 @@
 import { Link } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useUser } from "../hooks/useUser";
 
 const Register = () => {
@@ -50,7 +50,8 @@ const styles = StyleSheet.create({
         backgroundColor: "#0022ffff",
         padding: 15,
         borderRadius: 6,
-        marginBottom: 10
+        marginBottom: 10,
+        boxShadow: "0px 4px rgba(0,0,0,0.2)"
     },
     pressed: {
         opacity: 0.6
@@ -63,13 +64,6 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         width: "80%",
         fontSize: 22
-    },
-    switchCard: {
-        flexDirection: "row",
-        alignItems: "center",
-        borderRadius: 6,
-        marginBottom: 10,
-        backgroundColor: "#d0d0d0ff"
     },
     error: {
         color: "#ff0000",

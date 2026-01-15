@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Dimensions, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useUser } from "../hooks/useUser";
 import { Image } from "expo-image";
@@ -89,7 +89,8 @@ const styles = StyleSheet.create({
         backgroundColor: "#0022ffff",
         padding: 15,
         borderRadius: 6,
-        marginTop: 10
+        marginTop: 10,
+        boxShadow: "0px 4px rgba(0,0,0,0.2)"
     },
     pressed: {
         opacity: 0.6

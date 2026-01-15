@@ -1,5 +1,4 @@
 import { Stack } from "expo-router";
-import { StyleSheet } from "react-native";
 import { UserProvider } from "../contexts/UserContext";
 
 const RootLayout = () => {
@@ -17,5 +16,3 @@ const RootLayout = () => {
 }
 
 export default RootLayout;
-
-const styles = StyleSheet.create({});

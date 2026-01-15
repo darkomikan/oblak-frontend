@@ -50,7 +50,8 @@ const styles = StyleSheet.create({
         backgroundColor: "#0022ffff",
         padding: 15,
         borderRadius: 6,
-        marginBottom: 10
+        marginBottom: 10,
+        boxShadow: "0px 4px rgba(0,0,0,0.2)"
     },
     pressed: {
         opacity: 0.6

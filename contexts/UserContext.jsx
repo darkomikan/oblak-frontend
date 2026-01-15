@@ -2,14 +2,20 @@ import { createContext, useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import * as MediaLibrary from 'expo-media-library';
+import * as IntentLauncher from 'expo-intent-launcher';
+import { File } from "expo-file-system";
+import * as Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { PermissionsAndroid, Platform } from "react-native";
 
 export const UserContext = createContext();
 
 export function UserProvider({ children })
 {
     const usernameRegex = /^[a-z0-9]{4,}$/i;
+    const chunkSize = 5 * 1024 * 1024;
 
+    const sleeper = ms => new Promise(r => setTimeout(r, ms));
     const router = useRouter();
     const pathname = usePathname();
 
@@ -17,9 +23,13 @@ export function UserProvider({ children })
     const [localAlbums, setLocalAlbums] = useState([]);
     const [localFilesCount, setLocalFilesCount] = useState(0);
     const [filesToSend, setFilesToSend] = useState([]);
+    const [uploadProgress, setUploadProgress] = useState({ current: 0, max: 1 });
+    const [uploadSpeed, setUploadSpeed] = useState(0);
+    const [uploadCount, setUploadCount] = useState(0);
 
     const [user, setUser] = useState(null);
     const [waiting, setWaiting] = useState(true);
+    const [uploading, setUploading] = useState(false);
     const [online, setOnline] = useState(false);
     const [usage, setUsage] = useState(0);
 
@@ -142,7 +152,7 @@ export function UserProvider({ children })
                 else if (res.status === 400)
                     throw new Error("Neočekivana greška");
                 else if (res.status === 401)
-                    throw new Error("Prijavi se ponovo");
+                    logout();
             }, () => {
                 throw new Error("Veza sa oblakom nije uspostavljena");
             });
@@ -174,7 +184,7 @@ export function UserProvider({ children })
                     if (res.ok)
                         router.replace("/");
                     else if (res.status === 401)
-                        throw new Error("Prijavi se ponovo");
+                        logout();
                 }, () => {
                     throw new Error("Veza sa oblakom nije uspostavljena");
                 });
@@ -197,7 +207,6 @@ export function UserProvider({ children })
 
     async function checkLocalAlbums()
     {
-        console.log("checkAlbums");
         if (permissionResponse.status !== "granted")
         {
             if ((await requestPermission()).status !== "granted")
@@ -221,7 +230,6 @@ export function UserProvider({ children })
         {
             setLocalFilesCount(0);
             setFilesToSend(null);
-            console.log("checkFiles");
             if (permissionResponse.status !== "granted")
             {
                 if ((await requestPermission()).status !== "granted")
@@ -275,9 +283,164 @@ export function UserProvider({ children })
                     let files = await res.json();
                     setFilesToSend(files);
                 }
+                else if (res.status === 401)
+                    logout();
             }, () => {
                 setFilesToSend([]);
             });
+        }
+    }
+
+    async function uploadFile(uri, ws)
+    {
+        let fh = null;
+        try
+        {
+            const file = new File("file:///storage/emulated/" + uri);
+            fh = file.open();
+            
+            const fileSize = fh.size;
+            const totalChunks = Math.ceil(fileSize / chunkSize);
+
+            let resolver = null;
+            let i;
+
+            ws.onmessage = (res) => {
+                if (resolver !== null)
+                    resolver();
+                if (res.data === "error")
+                    i = totalChunks + 1;
+                else if (res.data !== "ok")
+                    setUploadProgress(prev => ({ current: prev.current + Number(res.data), max: prev.max }));
+            };
+
+            ws.send(JSON.stringify({
+                CreationTime: file.info().creationTime,
+                LastWriteTime: file.info().modificationTime,
+                Username: user.Username,
+                Uri: uri
+            }));
+
+            let timestamp;
+            for (i = 0; i < totalChunks; ++i)
+            {
+                await sleeper(30);
+                const start = i * chunkSize;
+                const end = Math.min(start + chunkSize, fileSize);
+
+                fh.offset = start;
+                const bytes = fh.readBytes(end - start);
+
+                timestamp = new Date().getTime();
+                await new Promise((resolve) => {
+                    resolver = resolve;
+                    ws.send(bytes);
+                });
+                if ((end - start) > 1024)
+                    setUploadSpeed((((end - start) * 1000) / ((new Date().getTime() - timestamp) * 1024 * 1024)).toFixed(2));
+            }
+            if (i === totalChunks)
+            {
+                await sleeper(30);
+                ws.send("ok");
+                return true;
+            }
+            else
+                return false;
+        }
+        catch (error)
+        {
+            if (fh !== null)
+                console.log(error);
+            return false;
+        }
+        finally
+        {
+            if (fh !== null)
+                fh.close();
+        }
+    }
+
+    async function checkFilesPermission()
+    {
+        if (Platform.OS === "android" && Platform.Version < 30)
+        {
+            await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+            {
+                title: "Dozvola za pristup",
+                message: "Aplikaciji treba dozvola za pristup datotekama za čitanje.",
+                buttonNeutral: "Kasnije",
+                buttonNegative: "Ne",
+                buttonPositive: "OK"
+            });
+        }
+        else
+        {
+            const packageName = Constants.default.expoConfig.android.package;
+            const intentAction = "android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION";
+            await IntentLauncher.startActivityAsync(intentAction, { data: `package:${packageName}` });
+        }
+    }
+
+    async function sendMissingFiles()
+    {
+        if (filesToSend !== null && filesToSend.length > 0)
+        {
+            try
+            {
+                const file = new File("file:///storage/emulated/" + filesToSend[0]);
+                const fh = file.open();
+                fh.close();
+            }
+            catch
+            {
+                await checkFilesPermission();
+                return;
+            }
+
+            setUploading(true);
+            setUploadProgress({ current: 0, max: 1 });
+            setUploadCount(0);
+            setUploadSpeed(0);
+            await sleeper(30);
+
+            const ws = new WebSocket("ws://192.168.1.28:7700");
+            ws.onopen = async () => {
+                console.log("ws opened...");
+
+                for (let i = 0; i < filesToSend.length; ++i)
+                {
+                    let result = await uploadFile(filesToSend[i], ws);
+                    if (result)
+                        setUploadCount(prev => prev + 1);
+                    else
+                        console.log("missed " + filesToSend[i]);
+                }
+                await sleeper(100);
+                ws.close();
+            };
+            ws.onerror = (e) => {
+                console.log("ws error: " + e.type);
+            };
+            ws.onclose = (e) => {
+                console.log("ws closed: " + e.code + ", " + e.reason);
+                setUploading(false);
+                checkLocalFiles();
+            };
+
+            // should go to separate task, or not
+            let fullSize = 0;
+            for (let i = 0; i < filesToSend.length; ++i)
+            {
+                try
+                {
+                    const file = new File("file:///storage/emulated/" + filesToSend[i]);
+                    fullSize += file.info().size;
+                }
+                catch
+                { }
+            }
+            setUploadProgress({ current: 0, max: fullSize });
         }
     }
 
@@ -291,7 +454,7 @@ export function UserProvider({ children })
     const checkStatus = useCallback(() => {
         const waitingTimeout = setTimeout(() => {
             setWaiting(true);
-        }, 500);
+        }, 1500);
         
         fetch("http://192.168.1.28:5152/api/user/status", {
             method: "GET",
@@ -321,6 +484,8 @@ export function UserProvider({ children })
                             let mb = await res.json();
                             setUsage(mb.toFixed(2));
                         }
+                        else if (res.status === 401)
+                            logout();
                     }, () => {
                         setOnline(false);
                     });
@@ -358,15 +523,13 @@ export function UserProvider({ children })
     useEffect(() => {
         if (!online && pathname !== "/" && pathname !== "/preview")
             router.replace("/");
-        else if (online && pathname === "/settings")
-            checkLocalAlbums();
         else if (online && pathname === "/")
             checkLocalFiles();
     }, [online, pathname]);
 
     return (
-        <UserContext.Provider value={{ user, waiting, online, usage, localAlbums, localFilesCount, filesToSend,
-            login, register, logout, updateUser, changePassword }}>
+        <UserContext.Provider value={{ user, waiting, online, usage, localAlbums, localFilesCount, filesToSend, uploading,
+            uploadProgress, uploadSpeed, uploadCount, login, register, logout, updateUser, changePassword, checkLocalAlbums, sendMissingFiles }}>
             {children}
         </UserContext.Provider>
     );
