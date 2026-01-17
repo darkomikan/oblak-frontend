@@ -41,7 +41,7 @@ export function UserProvider({ children })
             {
                 if (password.length >= 8)
                 {
-                    await fetch("http://192.168.1.28:5152/api/user/login", {
+                    await fetch("http://192.168.1.100:7070/api/user/login", {
                         method: "POST",
                         headers: {
                             Accept: "application/json",
@@ -85,7 +85,7 @@ export function UserProvider({ children })
             {
                 if (password.length >= 8)
                 {
-                    await fetch("http://192.168.1.28:5152/api/user/insert", {
+                    await fetch("http://192.168.1.100:7070/api/user/insert", {
                         method: "POST",
                         headers: {
                             Accept: "application/json",
@@ -121,7 +121,7 @@ export function UserProvider({ children })
         try
         {
             lastSync = lastSync.substring(0, 19) + ".000Z";
-            await fetch("http://192.168.1.28:5152/api/user/update", {
+            await fetch("http://192.168.1.100:7070/api/user/update", {
                 method: "PUT",
                 headers: {
                     Accept: "application/json",
@@ -169,7 +169,7 @@ export function UserProvider({ children })
         {
             if (password.length >= 8)
             {
-                await fetch("http://192.168.1.28:5152/api/user/changepassword", {
+                await fetch("http://192.168.1.100:7070/api/user/changepassword", {
                     method: "PUT",
                     headers: {
                         Accept: "application/json",
@@ -266,7 +266,7 @@ export function UserProvider({ children })
                 }
             }
 
-            fetch("http://192.168.1.28:5152/api/content/checkcontent", {
+            fetch("http://192.168.1.100:7070/api/content/checkcontent", {
                 method: "POST",
                 headers: {
                     Accept: "application/json",
@@ -404,7 +404,7 @@ export function UserProvider({ children })
             setUploadSpeed(0);
             await sleeper(30);
 
-            const ws = new WebSocket("ws://192.168.1.28:7700");
+            const ws = new WebSocket("ws://192.168.1.100:7071");
             ws.onopen = async () => {
                 console.log("ws opened...");
 
@@ -454,9 +454,9 @@ export function UserProvider({ children })
     const checkStatus = useCallback(() => {
         const waitingTimeout = setTimeout(() => {
             setWaiting(true);
-        }, 1500);
+        }, 1000);
         
-        fetch("http://192.168.1.28:5152/api/user/status", {
+        fetch("http://192.168.1.100:7070/api/user/status", {
             method: "GET",
             headers: {
                 Accept: "application/json",
@@ -469,7 +469,7 @@ export function UserProvider({ children })
                 setOnline(true);
                 if (user)
                 {
-                    fetch("http://192.168.1.28:5152/api/content/getusage?" + new URLSearchParams({
+                    fetch("http://192.168.1.100:7070/api/content/getusage?" + new URLSearchParams({
                             username: user.Username
                     }).toString(), {
                         method: "GET",

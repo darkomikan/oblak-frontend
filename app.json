@@ -41,12 +41,19 @@
       "expo-secure-store",
       "expo-router",
       "expo-media-library",
-      "expo-build-properties"
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "aba6a54e-00b7-4661-b69a-782d48a3ce70"
+        "projectId": "437a51aa-b2d5-48aa-989a-c4ad94323f4a"
       }
     }
   }
