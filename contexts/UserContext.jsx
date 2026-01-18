@@ -7,6 +7,7 @@ import { File } from "expo-file-system";
 import * as Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PermissionsAndroid, Platform } from "react-native";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 
 export const UserContext = createContext();
 
@@ -297,6 +298,8 @@ export function UserProvider({ children })
         try
         {
             const file = new File("file:///storage/emulated/" + uri);
+            if (file.info().size >= 2147483648)
+                return false;
             fh = file.open();
             
             const fileSize = fh.size;
@@ -402,6 +405,7 @@ export function UserProvider({ children })
             setUploadProgress({ current: 0, max: 1 });
             setUploadCount(0);
             setUploadSpeed(0);
+            await activateKeepAwakeAsync();
             await sleeper(30);
 
             const ws = new WebSocket("ws://192.168.1.100:7071");
@@ -424,6 +428,7 @@ export function UserProvider({ children })
             };
             ws.onclose = (e) => {
                 console.log("ws closed: " + e.code + ", " + e.reason);
+                deactivateKeepAwake();
                 setUploading(false);
                 checkLocalFiles();
             };
