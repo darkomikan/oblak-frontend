@@ -256,7 +256,7 @@ export function UserProvider({ children })
                         assets = await MediaLibrary.getAssetsAsync({ album: album, mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.audio,
                             MediaLibrary.MediaType.video], after: assets?.endCursor });
                         assets.assets.forEach(med => {
-                            let shortUri = med.uri.substring(25);
+                            let shortUri = med.uri.substring(16);
                             if (!ignoreFiles.includes(shortUri))
                             {
                                 setLocalFilesCount(prev => prev + 1);
@@ -297,7 +297,7 @@ export function UserProvider({ children })
         let fh = null;
         try
         {
-            const file = new File("file:///storage/emulated/" + uri);
+            const file = new File("file:///storage/" + uri);
             if (file.info().size >= 2147483648)
                 return false;
             fh = file.open();
@@ -391,7 +391,7 @@ export function UserProvider({ children })
         {
             try
             {
-                const file = new File("file:///storage/emulated/" + filesToSend[0]);
+                const file = new File("file:///storage/" + filesToSend[0]);
                 const fh = file.open();
                 fh.close();
             }
@@ -439,7 +439,7 @@ export function UserProvider({ children })
             {
                 try
                 {
-                    const file = new File("file:///storage/emulated/" + filesToSend[i]);
+                    const file = new File("file:///storage/" + filesToSend[i]);
                     fullSize += file.info().size;
                 }
                 catch

@@ -42,7 +42,7 @@ const Preview = () => {
                 <Image source={musicLogo} style={{ width: "50%", height: "50%" }} contentFit="contain" />
                 <Text style={{ textAlign: "center", fontSize: 18 }}>{item.substring(item.lastIndexOf("/") + 1)}</Text>
             </View> :
-            <Image source={{ uri: "file:///storage/emulated/" + item }} contentFit="cover" placeholder="blurhash"
+            <Image source={{ uri: "file:///storage/" + item }} contentFit="cover" placeholder="blurhash"
                 style={{ width: "100%", height: "100%" }}/>}
         </View>
     ), [ignoreFiles]);
